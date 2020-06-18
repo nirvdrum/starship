@@ -2,6 +2,8 @@ use std::ffi::OsStr;
 use std::path::Path;
 use std::{env, io};
 
+use which::which;
+
 /* We use a two-phase init here: the first phase gives a simple command to the
 shell. This command evaluates a more complicated script using `source` and
 process substitution.
@@ -18,11 +20,24 @@ has been developed as a compatibility measure with `eval $(starship init X)`
 */
 
 fn path_to_starship() -> io::Result<String> {
-    let current_exe = env::current_exe()?
-        .to_str()
-        .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "can't convert to str"))?
-        .to_string();
-    Ok(current_exe)
+    let exe_name = option_env!("CARGO_PKG_NAME").unwrap_or("starship");
+
+    match (which(exe_name)) {
+        Ok(path) => {
+            let current_exe = path
+                .to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "can't convert to str"))?
+                .to_string();
+            Ok(current_exe)
+        }
+        Err(error) => {
+            let current_exe = env::current_exe()?
+                .to_str()
+                .ok_or_else(|| io::Error::new(io::ErrorKind::Other, "can't convert to str"))?
+                .to_string();
+            Ok(current_exe)
+        }
+    }
 }
 
 /* This prints the setup stub, the short piece of code which sets up the main
